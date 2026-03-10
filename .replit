@@ -1,38 +1,16 @@
-modules = ["python-3.12"]
-[agent]
-expertMode = true
+modules = ["python-3.11"]
+run = "uvicorn app.main:app --host 0.0.0.0 --port 5000"
 
 [nix]
-channel = "stable-25_05"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "uvicorn app.main:app --host 0.0.0.0 --port 5000"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
+channel = "stable-23_11"
+packages = ["libsndfile", "libxcrypt", "pkg-config"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [deployment]
-deploymentTarget = "autoscale"
-run = ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
+deploymentTarget = "cloudrun"
+
+[agent]
+expertMode = true

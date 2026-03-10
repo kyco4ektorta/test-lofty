@@ -12,3 +12,5 @@ soundfile>=0.12.1
 
 # Optional: S3 uploads for RunPod worker
 boto3>=1.34.0
+runpod
+torch
