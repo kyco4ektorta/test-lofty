@@ -1,16 +1,16 @@
 modules = ["python-3.11"]
-run = "uvicorn app.main:app --host 0.0.0.0 --port 5000"
+run = "uvicorn app.main:app --host 0.0.0.0 --port 8080"
 
 [nix]
 channel = "stable-23_11"
-packages = ["libsndfile", "libxcrypt", "pkg-config"]
 
 [[ports]]
-localPort = 5000
+localPort = 8080
 externalPort = 80
 
 [deployment]
 deploymentTarget = "cloudrun"
+run = ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8080"]
 
 [agent]
 expertMode = true
