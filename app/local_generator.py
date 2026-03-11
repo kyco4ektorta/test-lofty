@@ -48,8 +48,12 @@ def _generate_sync(job_id: str, prompt: str, duration: int,
             logger.info(f"[{job_id}] Sending POST to Colab: {url}")
 
             # POST запрос с пустым телом
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
             req = urllib.request.Request(url, data=b"", method="POST")
-            with urllib.request.urlopen(req, timeout=300) as response:
+            with urllib.request.urlopen(req, timeout=300, context=ctx) as response:
                 audio_data = response.read()
 
             with open(output_path, "wb") as f:
