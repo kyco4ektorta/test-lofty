@@ -43,7 +43,8 @@ def _generate_sync(job_id: str, prompt: str, duration: int,
     if colab_url:
         try:
             encoded_prompt = urllib.parse.quote(prompt)
-            url = f"{colab_url}/generate?prompt={encoded_prompt}&duration_tokens=256"
+            duration_tokens = duration * 50
+            url = f"{colab_url}/generate?prompt={encoded_prompt}&duration_tokens={duration_tokens}"
             logger.info(f"[{job_id}] Sending POST to Colab: {url}")
 
             # POST запрос с пустым телом

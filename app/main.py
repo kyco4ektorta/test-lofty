@@ -105,7 +105,7 @@ async def process_generation(job_id: str, request: GenerationRequest):
         else:
             logger.info(f"[{job_id}] Generating locally with MusicGen")
             output_path = await local_generator.generate(job_id, request)
-            base_url = os.getenv("BASE_URL", "http://localhost:8000")
+            base_url = os.getenv("BASE_URL", "https://test-lofty--warabooot.replit.app")
             audio_url = f"{base_url}/outputs/{os.path.basename(output_path)}"
             job_store.update(
                 job_id,
