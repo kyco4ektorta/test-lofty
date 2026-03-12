@@ -318,5 +318,5 @@ async def runpod_status():
 
 @app.get("/", include_in_schema=False)
 async def serve_ui():
-    """Serve the main UI page."""
-    return FileResponse(os.path.join(_HERE, "index.html"))
+    from fastapi.responses import FileResponse
+    return FileResponse("index.html")
