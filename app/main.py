@@ -319,4 +319,6 @@ async def runpod_status():
 @app.get("/", include_in_schema=False)
 async def serve_ui():
     from fastapi.responses import FileResponse
-    return FileResponse("index.html")
+    import os
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return FileResponse(os.path.join(base, "index.html"))
