@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import httpx
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
 from app.models import (
     GenerationRequest, GenerationResponse, JobStatus,
     JobStatusResponse, HealthResponse, RunpodConfig
@@ -312,3 +314,9 @@ async def runpod_status():
     if not runpod_client.is_configured():
         return {"configured": False, "message": "Set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID env vars"}
     return await runpod_client.get_status()
+
+
+@app.get("/", include_in_schema=False)
+async def serve_ui():
+    """Serve the main UI page."""
+    return FileResponse(os.path.join(_HERE, "index.html"))

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MusicGen AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #c8f542;
+    --accent2: #ff6b35;
+    --text: #e8e8e8;
+    --muted: #555555;
+    --error: #ff4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 24px;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 64px;
+    position: relative;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 12vw, 120px);
+    line-height: 0.9;
+    letter-spacing: -2px;
+    color: var(--text);
+    position: relative;
+    display: inline-block;
+  }
+
+  .logo span {
+    color: var(--accent);
+    display: block;
+  }
+
+  .logo::after {
+    content: 'AI';
+    position: absolute;
+    top: -12px;
+    right: -32px;
+    font-size: 18px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent2);
+    font-style: italic;
+    letter-spacing: 4px;
+  }
+
+  .tagline {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  .status-dot.error { background: var(--error); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Main form */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 40px;
+    margin-bottom: 32px;
+    position: relative;
+  }
+
+  .form-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 48px; height: 3px;
+    background: var(--accent);
+  }
+
+  .field-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .prompt-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 300;
+    padding: 16px 20px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 100px;
+    line-height: 1.6;
+  }
+
+  .prompt-input::placeholder { color: var(--muted); }
+  .prompt-input:focus { border-color: var(--accent); }
+
+  /* Quick prompts */
+  .quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    margin-bottom: 32px;
+  }
+
+  .quick-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Controls row */
+  .controls-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .range-wrapper {
+    position: relative;
+  }
+
+  .range-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .range-value span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 0;
+    transition: transform 0.1s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+
+  /* Generate button */
+  .generate-btn {
+    width: 100%;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 4px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .generate-btn:hover {
+    background: #d4ff55;
+    transform: translateY(-1px);
+  }
+
+  .generate-btn:active { transform: translateY(0); }
+
+  .generate-btn:disabled {
+    background: var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .generate-btn .btn-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--bg);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Jobs list */
+  .jobs-section { margin-top: 48px; }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .job-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+    transition: border-color 0.3s;
+  }
+
+  .job-card.completed { border-left: 3px solid var(--accent); }
+  .job-card.failed { border-left: 3px solid var(--error); }
+  .job-card.processing { border-left: 3px solid var(--accent2); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .job-prompt {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .job-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .job-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border: 1px solid;
+  }
+
+  .job-status.queued { color: var(--muted); border-color: var(--muted); }
+  .job-status.processing { color: var(--accent2); border-color: var(--accent2); animation: pulse 1.5s infinite; }
+  .job-status.completed { color: var(--accent); border-color: var(--accent); }
+  .job-status.failed { color: var(--error); border-color: var(--error); }
+
+  .job-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Audio player */
+  .audio-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  audio {
+    width: 100%;
+    height: 32px;
+    filter: invert(1) hue-rotate(60deg);
+    margin-bottom: 10px;
+  }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .download-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 14px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+    max-width: 320px;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .toast.error { border-left-color: var(--error); }
+
+  /* Waveform animation */
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 24px;
+  }
+
+  .waveform-bar {
+    width: 3px;
+    background: var(--accent2);
+    border-radius: 1px;
+    animation: wave 1s ease-in-out infinite;
+  }
+
+  .waveform-bar:nth-child(1) { animation-delay: 0s; height: 8px; }
+  .waveform-bar:nth-child(2) { animation-delay: 0.1s; height: 16px; }
+  .waveform-bar:nth-child(3) { animation-delay: 0.2s; height: 24px; }
+  .waveform-bar:nth-child(4) { animation-delay: 0.3s; height: 12px; }
+  .waveform-bar:nth-child(5) { animation-delay: 0.4s; height: 20px; }
+  .waveform-bar:nth-child(6) { animation-delay: 0.5s; height: 8px; }
+  .waveform-bar:nth-child(7) { animation-delay: 0.6s; height: 16px; }
+
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  @media (max-width: 600px) {
+    .controls-row { grid-template-columns: 1fr; }
+    .form-card { padding: 24px; }
+    .logo { font-size: 64px; }
+    .job-card { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="logo">
+      Music<span>Gen</span>
+    </div>
+    <p class="tagline">Text-to-Music Neural Generation</p>
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Проверка соединения...</span>
+    </div>
+  </header>
+
+  <div class="form-card">
+    <label class="field-label">Описание музыки</label>
+    <textarea
+      class="prompt-input"
+      id="promptInput"
+      placeholder="Опиши музыку которую хочешь создать..."
+      rows="3"
+    ></textarea>
+
+    <div class="quick-prompts">
+      <button class="quick-btn" onclick="setPrompt('epic cinematic orchestra with dramatic strings, 90 BPM')">🎬 Кино</button>
+      <button class="quick-btn" onclick="setPrompt('lo-fi hip hop with jazzy chords, vinyl texture, 75 BPM')">🎧 Lo-fi</button>
+      <button class="quick-btn" onclick="setPrompt('dark techno with industrial kicks and synthesizers')">⚡ Техно</button>
+      <button class="quick-btn" onclick="setPrompt('relaxing acoustic guitar with nature sounds, peaceful')">🌿 Акустика</button>
+      <button class="quick-btn" onclick="setPrompt('upbeat jazz piano trio with double bass, swing feel')">🎷 Джаз</button>
+      <button class="quick-btn" onclick="setPrompt('ambient electronic with ethereal pads and gentle rhythm')">🌊 Эмбиент</button>
+    </div>
+
+    <div class="controls-row">
+      <div class="range-wrapper">
+        <label class="field-label">Длительность</label>
+        <div class="range-value" id="durationVal">10 <span>сек</span></div>
+        <input type="range" id="durationRange" min="3" max="15" value="10" oninput="document.getElementById('durationVal').innerHTML = this.value + ' <span>сек</span>'">
+      </div>
+      <div class="range-wrapper">
+        <label class="field-label">Креативность</label>
+        <div class="range-value" id="tempVal">1.0</div>
+        <input type="range" id="tempRange" min="0.1" max="2.0" step="0.1" value="1.0" oninput="document.getElementById('tempVal').textContent = parseFloat(this.value).toFixed(1)">
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generate()">
+      <div class="btn-inner">
+        <div class="spinner" id="spinner"></div>
+        <span id="btnText">ГЕНЕРИРОВАТЬ</span>
+      </div>
+    </button>
+  </div>
+
+  <div class="jobs-section">
+    <div class="section-title">История генераций</div>
+    <div id="jobsList">
+      <div class="empty-state">ЗАДАЧИ ПОЯВЯТСЯ ЗДЕСЬ</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '';
+  const jobs = [];
+  const pollingIntervals = {};
+
+  // Check health on load
+  async function checkHealth() {
+    try {
+      const r = await fetch(`${API}/health`);
+      const data = await r.json();
+      if (data.status === 'ok') {
+        document.getElementById('statusDot').className = 'status-dot online';
+        document.getElementById('statusText').textContent = `API онлайн · Colab: ${data.local_model_loaded ? 'подключён' : 'не подключён'}`;
+      }
+    } catch(e) {
+      document.getElementById('statusDot').className = 'status-dot error';
+      document.getElementById('statusText').textContent = 'API недоступен';
+    }
+  }
+
+  function setPrompt(text) {
+    document.getElementById('promptInput').value = text;
+    document.getElementById('promptInput').focus();
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  async function generate() {
+    const prompt = document.getElementById('promptInput').value.trim();
+    if (!prompt) { showToast('Введи описание музыки', true); return; }
+
+    const duration = parseInt(document.getElementById('durationRange').value);
+    const temperature = parseFloat(document.getElementById('tempRange').value);
+
+    // UI state
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('btnText').textContent = 'ОТПРАВКА...';
+
+    try {
+      const r = await fetch(`${API}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, duration, temperature, backend: 'local' })
+      });
+      const data = await r.json();
+
+      if (data.job_id) {
+        addJob(data.job_id, prompt, duration);
+        showToast(`Задача создана · ID: ${data.job_id.slice(0,8)}...`);
+        startPolling(data.job_id);
+      }
+    } catch(e) {
+      showToast('Ошибка соединения с API', true);
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('btnText').textContent = 'ГЕНЕРИРОВАТЬ';
+    }
+  }
+
+  function addJob(jobId, prompt, duration) {
+    jobs.unshift({ jobId, prompt, duration, status: 'queued', createdAt: new Date() });
+    renderJobs();
+  }
+
+  function renderJobs() {
+    const el = document.getElementById('jobsList');
+    if (!jobs.length) {
+      el.innerHTML = '<div class="empty-state">ЗАДАЧИ ПОЯВЯТСЯ ЗДЕСЬ</div>';
+      return;
+    }
+
+    el.innerHTML = jobs.map(job => `
+      <div class="job-card ${job.status}" id="job-${job.jobId}">
+        <div>
+          <div class="job-prompt">${job.prompt}</div>
+          <div class="job-meta">
+            <span>${job.jobId.slice(0,8)}...</span>
+            <span>${job.duration} сек</span>
+            <span>${formatTime(job.createdAt)}</span>
+            ${job.genTime ? `<span>⏱ ${job.genTime}с</span>` : ''}
+          </div>
+          ${job.status === 'completed' && job.audioUrl ? `
+            <div class="audio-section">
+              <audio controls src="${job.audioUrl}"></audio>
+              <a class="download-btn" href="${job.audioUrl}" download="musicgen-${job.jobId.slice(0,8)}.wav">
+                ↓ Скачать WAV
+              </a>
+            </div>
+          ` : ''}
+          ${job.status === 'failed' ? `<div style="color:var(--error);font-size:11px;margin-top:8px;font-family:'DM Mono',monospace">${job.error || 'Ошибка генерации'}</div>` : ''}
+        </div>
+        <div class="job-actions">
+          ${job.status === 'processing' ? `
+            <div class="waveform">
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+              <div class="waveform-bar"></div>
+            </div>
+          ` : ''}
+          <div class="job-status ${job.status}">${job.status}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function formatTime(date) {
+    return date.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function startPolling(jobId) {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 60) { // 5 минут максимум
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const r = await fetch(`${API}/jobs/${jobId}`);
+        const data = await r.json();
+        const job = jobs.find(j => j.jobId === jobId);
+        if (!job) return;
+
+        job.status = data.status;
+
+        if (data.status === 'completed') {
+          clearInterval(interval);
+          // Try audio URL from API, fallback to direct outputs path
+          job.audioUrl = data.audio_url || `${API}/outputs/${jobId}.wav`;
+          job.genTime = data.duration_seconds;
+          showToast('🎵 Музыка готова!');
+          renderJobs();
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          job.error = data.error;
+          showToast('Генерация не удалась', true);
+          renderJobs();
+        } else {
+          // Still processing — try direct file access after 30s
+          if (attempts > 6) {
+            try {
+              const fileCheck = await fetch(`${API}/outputs/${jobId}.wav`, { method: 'HEAD' });
+              if (fileCheck.ok) {
+                clearInterval(interval);
+                job.status = 'completed';
+                job.audioUrl = `${API}/outputs/${jobId}.wav`;
+                showToast('🎵 Музыка готова!');
+                renderJobs();
+                return;
+              }
+            } catch(e) {}
+          }
+          renderJobs();
+        }
+      } catch(e) {}
+    }, 5000);
+    pollingIntervals[jobId] = interval;
+  }
+
+  // Init
+  checkHealth();
+  setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
